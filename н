@@ -1,0 +1,528 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local Camera = workspace.CurrentCamera
+
+if CoreGui:FindFirstChild("DeltaCheat_DP") then
+    CoreGui.DeltaCheat_DP:Destroy()
+end
+
+local flying, noclip, espEnabled, aimbotEnabled, spinning, showFov = false, false, false, false, false, false
+local flySpeed, aimFOV, aimSmooth, spinSpeed = 60, 150, 0.5, 10
+local flyConnection, noclipConnection, aimConnection, spinConnection
+local bodyVel, bodyGyro
+local espHighlights = {}
+local fovCircle = nil
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DeltaCheat_DP"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+-- [ADD] защита от удаления при респавне
+ScreenGui.DisplayOrder = 999
+
+-- КРУГЛАЯ КНОПКА "GG"
+local MiniBtn = Instance.new("TextButton")
+MiniBtn.Size = UDim2.new(0, 50, 0, 50)
+MiniBtn.Position = UDim2.new(1, -70, 0.3, 0)
+MiniBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+MiniBtn.Text = "GG"
+MiniBtn.TextColor3 = Color3.fromRGB(255, 50, 150)
+MiniBtn.TextSize = 18
+MiniBtn.Font = Enum.Font.GothamBold
+MiniBtn.BorderSizePixel = 0
+MiniBtn.Visible = false
+MiniBtn.Parent = ScreenGui
+Instance.new("UICorner", MiniBtn).CornerRadius = UDim.new(1, 0)
+local MiniStroke = Instance.new("UIStroke", MiniBtn)
+MiniStroke.Color = Color3.fromRGB(255, 50, 150)
+MiniStroke.Thickness = 2
+
+-- ОКНО ПАРОЛЯ
+local PassFrame = Instance.new("Frame")
+PassFrame.Size = UDim2.new(0, 220, 0, 140)
+PassFrame.Position = UDim2.new(0.5, -110, 0.5, -70)
+PassFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+PassFrame.BorderSizePixel = 0
+PassFrame.Parent = ScreenGui
+Instance.new("UICorner", PassFrame).CornerRadius = UDim.new(0, 10)
+
+local PassStroke = Instance.new("UIStroke", PassFrame)
+PassStroke.Color = Color3.fromRGB(255, 50, 150)
+PassStroke.Thickness = 1.5
+
+local PassTitle = Instance.new("TextLabel")
+PassTitle.Size = UDim2.new(1, 0, 0, 30)
+PassTitle.Position = UDim2.new(0, 0, 0, 10)
+PassTitle.BackgroundTransparency = 1
+PassTitle.Text = "ВХОД В СИСТЕМУ"
+PassTitle.TextColor3 = Color3.fromRGB(255, 50, 150)
+PassTitle.TextSize = 16
+PassTitle.Font = Enum.Font.GothamBold
+PassTitle.Parent = PassFrame
+
+local PassBox = Instance.new("TextBox")
+PassBox.Size = UDim2.new(0.8, 0, 0, 35)
+PassBox.Position = UDim2.new(0.1, 0, 0.35, 0)
+PassBox.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+PassBox.PlaceholderText = "prol"
+PassBox.Text = ""
+PassBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+PassBox.TextSize = 14
+PassBox.Font = Enum.Font.Gotham
+PassBox.BorderSizePixel = 0
+PassBox.Parent = PassFrame
+Instance.new("UICorner", PassBox).CornerRadius = UDim.new(0, 6)
+
+local PassBtn = Instance.new("TextButton")
+PassBtn.Size = UDim2.new(0.8, 0, 0, 35)
+PassBtn.Position = UDim2.new(0.1, 0, 0.65, 0)
+PassBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 150)
+PassBtn.Text = "ВОЙТИ"
+PassBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PassBtn.TextSize = 14
+PassBtn.Font = Enum.Font.GothamBold
+PassBtn.BorderSizePixel = 0
+PassBtn.Parent = PassFrame
+Instance.new("UICorner", PassBtn).CornerRadius = UDim.new(0, 6)
+
+-- ГЛАВНАЯ ПАНЕЛЬ
+local MainPanel = Instance.new("Frame")
+MainPanel.Size = UDim2.new(0, 260, 0, 420)
+MainPanel.Position = UDim2.new(1, -280, 0.2, 0)
+MainPanel.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+MainPanel.BorderSizePixel = 0
+MainPanel.Active = true
+MainPanel.Draggable = true
+MainPanel.Visible = false
+MainPanel.Parent = ScreenGui
+Instance.new("UICorner", MainPanel).CornerRadius = UDim.new(0, 10)
+
+local MainStroke = Instance.new("UIStroke", MainPanel)
+MainStroke.Color = Color3.fromRGB(255, 50, 150)
+MainStroke.Thickness = 1.5
+
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 40)
+TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainPanel
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
+
+local TitleMask = Instance.new("Frame")
+TitleMask.Size = UDim2.new(1, 0, 0, 20)
+TitleMask.Position = UDim2.new(0, 0, 1, -20)
+TitleMask.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+TitleMask.BorderSizePixel = 0
+TitleMask.Parent = TitleBar
+
+local TitleText = Instance.new("TextLabel")
+TitleText.Size = UDim2.new(1, -50, 0, 20)
+TitleText.Position = UDim2.new(0, 15, 0, 2)
+TitleText.BackgroundTransparency = 1
+TitleText.Text = "PRIVATE CHEAT"
+TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleText.TextSize = 14
+TitleText.Font = Enum.Font.GothamBold
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.Parent = TitleBar
+
+local AuthorText = Instance.new("TextLabel")
+AuthorText.Size = UDim2.new(1, -50, 0, 14)
+AuthorText.Position = UDim2.new(0, 15, 0, 20)
+AuthorText.BackgroundTransparency = 1
+AuthorText.Text = "by monstrik"
+AuthorText.TextColor3 = Color3.fromRGB(150, 150, 150)
+AuthorText.TextSize = 10
+AuthorText.Font = Enum.Font.Gotham
+AuthorText.TextXAlignment = Enum.TextXAlignment.Left
+AuthorText.Parent = TitleBar
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 28, 0, 28)
+CloseBtn.Position = UDim2.new(1, -38, 0, 6)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 14
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Parent = TitleBar
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+
+-- Вкладки
+local TabFrame = Instance.new("Frame")
+TabFrame.Size = UDim2.new(1, -20, 0, 32)
+TabFrame.Position = UDim2.new(0, 10, 0, 50)
+TabFrame.BackgroundTransparency = 1
+TabFrame.Parent = MainPanel
+
+local function createTab(name, posX)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.31, 0, 1, 0)
+    btn.Position = UDim2.new(posX, 0, 0, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.TextSize = 12
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 0
+    btn.Parent = TabFrame
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    return btn
+end
+
+local TabFly = createTab("FLY", 0)
+local TabAim = createTab("AIM", 0.34)
+local TabEsp = createTab("ESP", 0.69)
+
+local ContentFly = Instance.new("Frame")
+ContentFly.Size = UDim2.new(1, -20, 0, 300)
+ContentFly.Position = UDim2.new(0, 10, 0, 90)
+ContentFly.BackgroundTransparency = 1
+ContentFly.Parent = MainPanel
+
+local ContentAim = Instance.new("Frame")
+ContentAim.Size = UDim2.new(1, -20, 0, 300)
+ContentAim.Position = UDim2.new(0, 10, 0, 90)
+ContentAim.BackgroundTransparency = 1
+ContentAim.Visible = false
+ContentAim.Parent = MainPanel
+
+local ContentEsp = Instance.new("Frame")
+ContentEsp.Size = UDim2.new(1, -20, 0, 300)
+ContentEsp.Position = UDim2.new(0, 10, 0, 90)
+ContentEsp.BackgroundTransparency = 1
+ContentEsp.Visible = false
+ContentEsp.Parent = MainPanel
+
+local function selectTab(tab)
+    ContentFly.Visible = (tab == TabFly)
+    ContentAim.Visible = (tab == TabAim)
+    ContentEsp.Visible = (tab == TabEsp)
+    
+    TabFly.BackgroundColor3 = (tab == TabFly) and Color3.fromRGB(255, 50, 150) or Color3.fromRGB(30, 30, 35)
+    TabAim.BackgroundColor3 = (tab == TabAim) and Color3.fromRGB(255, 50, 150) or Color3.fromRGB(30, 30, 35)
+    TabEsp.BackgroundColor3 = (tab == TabEsp) and Color3.fromRGB(255, 50, 150) or Color3.fromRGB(30, 30, 35)
+end
+selectTab(TabFly)
+
+TabFly.MouseButton1Click:Connect(function() selectTab(TabFly) end)
+TabAim.MouseButton1Click:Connect(function() selectTab(TabAim) end)
+TabEsp.MouseButton1Click:Connect(function() selectTab(TabEsp) end)
+
+-- FLY UI
+local FlyBtn = Instance.new("TextButton")
+FlyBtn.Size = UDim2.new(0.9, 0, 0, 40)
+FlyBtn.Position = UDim2.new(0.05, 0, 0, 10)
+FlyBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
+FlyBtn.Text = "FLY: OFF"
+FlyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FlyBtn.TextSize = 14
+FlyBtn.Font = Enum.Font.GothamBold
+FlyBtn.BorderSizePixel = 0
+FlyBtn.Parent = ContentFly
+Instance.new("UICorner", FlyBtn).CornerRadius = UDim.new(0, 6)
+
+local SpinBtn = Instance.new("TextButton")
+SpinBtn.Size = UDim2.new(0.9, 0, 0, 40)
+SpinBtn.Position = UDim2.new(0.05, 0, 0, 60)
+SpinBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 40)
+SpinBtn.Text = "SPIN: OFF"
+SpinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpinBtn.TextSize = 14
+SpinBtn.Font = Enum.Font.GothamBold
+SpinBtn.BorderSizePixel = 0
+SpinBtn.Parent = ContentFly
+Instance.new("UICorner", SpinBtn).CornerRadius = UDim.new(0, 6)
+
+local NoclipBtn = Instance.new("TextButton")
+NoclipBtn.Size = UDim2.new(0.9, 0, 0, 40)
+NoclipBtn.Position = UDim2.new(0.05, 0, 0, 110)
+NoclipBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+NoclipBtn.Text = "NOCLIP: OFF"
+NoclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoclipBtn.TextSize = 14
+NoclipBtn.Font = Enum.Font.GothamBold
+NoclipBtn.BorderSizePixel = 0
+NoclipBtn.Parent = ContentFly
+Instance.new("UICorner", NoclipBtn).CornerRadius = UDim.new(0, 6)
+
+local SpeedBox = Instance.new("TextBox")
+SpeedBox.Size = UDim2.new(0.9, 0, 0, 35)
+SpeedBox.Position = UDim2.new(0.05, 0, 0, 160)
+SpeedBox.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+SpeedBox.PlaceholderText = "Скорость (60)"
+SpeedBox.Text = "60"
+SpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedBox.TextSize = 14
+SpeedBox.Font = Enum.Font.Gotham
+SpeedBox.BorderSizePixel = 0
+SpeedBox.Parent = ContentFly
+Instance.new("UICorner", SpeedBox).CornerRadius = UDim.new(0, 6)
+
+-- AIM UI
+local AimBtn = Instance.new("TextButton")
+AimBtn.Size = UDim2.new(0.9, 0, 0, 40)
+AimBtn.Position = UDim2.new(0.05, 0, 0, 10)
+AimBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
+AimBtn.Text = "AIM: OFF"
+AimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimBtn.TextSize = 14
+AimBtn.Font = Enum.Font.GothamBold
+AimBtn.BorderSizePixel = 0
+AimBtn.Parent = ContentAim
+Instance.new("UICorner", AimBtn).CornerRadius = UDim.new(0, 6)
+
+local FovShowBtn = Instance.new("TextButton")
+FovShowBtn.Size = UDim2.new(0.9, 0, 0, 40)
+FovShowBtn.Position = UDim2.new(0.05, 0, 0, 60)
+FovShowBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+FovShowBtn.Text = "КРУГ FOV: OFF"
+FovShowBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FovShowBtn.TextSize = 14
+FovShowBtn.Font = Enum.Font.GothamBold
+FovShowBtn.BorderSizePixel = 0
+FovShowBtn.Parent = ContentAim
+Instance.new("UICorner", FovShowBtn).CornerRadius = UDim.new(0, 6)
+
+local FovBox = Instance.new("TextBox")
+FovBox.Size = UDim2.new(0.9, 0, 0, 35)
+FovBox.Position = UDim2.new(0.05, 0, 0, 110)
+FovBox.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+FovBox.PlaceholderText = "FOV Радиус (150)"
+FovBox.Text = "150"
+FovBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+FovBox.TextSize = 14
+FovBox.Font = Enum.Font.Gotham
+FovBox.BorderSizePixel = 0
+FovBox.Parent = ContentAim
+Instance.new("UICorner", FovBox).CornerRadius = UDim.new(0, 6)
+
+local SmoothBox = Instance.new("TextBox")
+SmoothBox.Size = UDim2.new(0.9, 0, 0, 35)
+SmoothBox.Position = UDim2.new(0.05, 0, 0, 155)
+SmoothBox.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+SmoothBox.PlaceholderText = "Плавность (0.5)"
+SmoothBox.Text = "0.5"
+SmoothBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SmoothBox.TextSize = 14
+SmoothBox.Font = Enum.Font.Gotham
+SmoothBox.BorderSizePixel = 0
+SmoothBox.Parent = ContentAim
+Instance.new("UICorner", SmoothBox).CornerRadius = UDim.new(0, 6)
+
+-- ESP UI
+local EspBtn = Instance.new("TextButton")
+EspBtn.Size = UDim2.new(0.9, 0, 0, 40)
+EspBtn.Position = UDim2.new(0.05, 0, 0, 10)
+EspBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
+EspBtn.Text = "ESP: OFF"
+EspBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+EspBtn.TextSize = 14
+EspBtn.Font = Enum.Font.GothamBold
+EspBtn.BorderSizePixel = 0
+EspBtn.Parent = ContentEsp
+Instance.new("UICorner", EspBtn).CornerRadius = UDim.new(0, 6)
+
+-- ЛОГИКА
+local function getRoot()
+    if LocalPlayer.Character then return LocalPlayer.Character:FindFirstChild("HumanoidRootPart") end
+end
+local function getHumanoid()
+    if LocalPlayer.Character then return LocalPlayer.Character:FindFirstChildOfClass("Humanoid") end
+end
+
+local function stopFly()
+    if flyConnection then flyConnection:Disconnect() flyConnection = nil end
+    if bodyVel then bodyVel:Destroy() bodyVel = nil end
+    if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+    local hum = getHumanoid()
+    if hum then hum.PlatformStand = false hum.AutoRotate = true end
+end
+
+local function startFly()
+    local root, hum = getRoot(), getHumanoid()
+    if not root or not hum then return end
+    stopFly()
+    hum.PlatformStand = true hum.AutoRotate = false 
+    bodyVel = Instance.new("BodyVelocity", root)
+    bodyVel.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bodyVel.Velocity = Vector3.zero
+    bodyGyro = Instance.new("BodyGyro", root)
+    bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bodyGyro.P = 10000 bodyGyro.D = 500
+    bodyGyro.CFrame = Camera.CFrame
+
+    flyConnection = RunService.RenderStepped:Connect(function()
+        if not flying then return end
+        local r = getRoot() if not r then return end
+        local moveDir, kb = Vector3.zero, Vector3.zero
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then kb = kb + Vector3.new(0,0,-1) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then kb = kb + Vector3.new(0,0,1) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then kb = kb + Vector3.new(-1,0,0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then kb = kb + Vector3.new(1,0,0) end
+        if hum and hum.MoveDirection.Magnitude > 0.1 then moveDir = hum.MoveDirection
+        elseif kb.Magnitude > 0 then moveDir = kb end
+        local finalDir = Vector3.zero
+        if moveDir.Magnitude > 0 then finalDir = Camera.CFrame:VectorToWorldSpace(moveDir) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then finalDir = finalDir + Vector3.new(0,1,0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then finalDir = finalDir - Vector3.new(0,1,0) end
+        if finalDir.Magnitude > 0 then bodyVel.Velocity = finalDir.Unit * flySpeed else bodyVel.Velocity = Vector3.zero end
+        bodyGyro.CFrame = Camera.CFrame
+    end)
+end
+
+local function updateNoclip()
+    if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
+    if noclip then
+        noclipConnection = RunService.Stepped:Connect(function()
+            if LocalPlayer.Character then
+                for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end)
+    else
+        if LocalPlayer.Character then
+            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = true end
+            end
+        end
+    end
+end
+
+local function startSpin()
+    if spinConnection then spinConnection:Disconnect() end
+    spinConnection = RunService.RenderStepped:Connect(function()
+        local root = getRoot()
+        if spinning and root then
+            root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(spinSpeed), 0)
+        end
+    end)
+end
+
+-- ESP С ПРОВЕРКОЙ ВИДИМОСТИ
+local function updateESP()
+    for _, hl in pairs(espHighlights) do if hl then hl:Destroy() end end
+    espHighlights = {}
+    if not espEnabled then return end
+    
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local head = p.Character:FindFirstChild("Head")
+            local hl = Instance.new("Highlight")
+            hl.Adornee = p.Character
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.FillTransparency = 0.5
+            
+            if head then
+                local origin = Camera.CFrame.Position
+                local direction = (head.Position - origin)
+                local raycastParams = RaycastParams.new()
+                raycastParams.FilterDescendantsInstances = {Camera, LocalPlayer.Character, p.Character}
+                raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+                
+                local result = workspace:Raycast(origin, direction, raycastParams)
+                if result then
+                    hl.FillColor = Color3.fromRGB(255, 0, 0)
+                    hl.OutlineColor = Color3.fromRGB(255, 0, 0)
+                else
+                    hl.FillColor = Color3.fromRGB(0, 255, 0)
+                    hl.OutlineColor = Color3.fromRGB(0, 255, 0)
+                end
+            else
+                hl.FillColor = Color3.fromRGB(255, 0, 0)
+                hl.OutlineColor = Color3.fromRGB(255, 0, 0)
+            end
+            hl.Parent = CoreGui
+            espHighlights[p.UserId] = hl
+        end
+    end
+end
+
+-- AIMBOT
+local function updateAimbot()
+    if aimConnection then aimConnection:Disconnect() aimConnection = nil end
+    if aimbotEnabled then
+        aimConnection = RunService.RenderStepped:Connect(function()
+            local closest, shortestDist = nil, aimFOV
+            local center = Camera.ViewportSize / 2
+            
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character then
+                    local head = p.Character:FindFirstChild("Head")
+                    if head then
+                        local raycastParams = RaycastParams.new()
+                        raycastParams.FilterDescendantsInstances = {Camera, LocalPlayer.Character, p.Character}
+                        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+                        local result = workspace:Raycast(Camera.CFrame.Position, (head.Position - Camera.CFrame.Position), raycastParams)
+                        
+                        if not result then 
+                            local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                            if onScreen then
+                                local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                                if dist < shortestDist then 
+                                    shortestDist = dist 
+                                    closest = head 
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            if closest then
+                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, closest.Position), aimSmooth)
+            end
+        end)
+    end
+end
+
+-- КРУГ FOV (ЧЕРЕЗ IMAGELABEL)
+local function toggleFovCircle()
+    if showFov then
+        if not fovCircle then
+            fovCircle = Instance.new("ImageLabel")
+            fovCircle.BackgroundTransparency = 1
+            fovCircle.Image = "rbxassetid://13473174675" 
+            fovCircle.ImageColor3 = Color3.fromRGB(255, 50, 150)
+            fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+            -- [FIX] центрирование круга по вьюпорту
+            fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+            fovCircle.Parent = ScreenGui
+        end
+        fovCircle.Size = UDim2.new(0, aimFOV * 2, 0, aimFOV * 2)
+        fovCircle.Visible = true
+    else
+        if fovCircle then fovCircle.Visible = false end
+    end
+end
+
+-- [ADD] обновление позиции FOV-круга при ресайзе/камере
+RunService.RenderStepped:Connect(function()
+    if fovCircle and fovCircle.Visible then
+        fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+    end
+end)
+
+-- [FIX] обработчик пароля с защитой от пустого ввода
+PassBtn.MouseButton1Click:Connect(function()
+    if PassBox.Text == "RPNK" then
+        PassFrame.Visible = false
+        MainPanel.Visible = true
+    else
+        PassBox.Text = ""
+        PassBox.PlaceholderText = "Неверный пароль!"
+    end
+end)
+
+-- [ADD] вход по Enter в поле пароля
+PassBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then PassBtn:Fire("MouseButton1Click") end
+end)
+
+FlyBtn.MouseButton1Click:Connect(function()
+    flying = not flyi
